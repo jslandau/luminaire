@@ -1,0 +1,22 @@
+# Build directories
+build/
+built/
+
+# Qt generated files
+*_autogen/
+moc_*.cpp
+*.o
+*.so
+*.a
+
+# IDE files
+.vscode/
+.idea/
+*.user
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
