@@ -17,7 +17,7 @@ MainWindow::MainWindow(QWidget *parent)
     , m_api(new KeyLightAPI(this))
     , m_refreshTimer(new QTimer(this))
 {
-    setWindowTitle("Key Light Control");
+    setWindowTitle("Luminaire");
     setWindowIcon(createLightbulbIcon(true));
     setMinimumWidth(300);
 
