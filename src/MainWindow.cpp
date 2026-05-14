@@ -341,6 +341,16 @@ void MainWindow::closeEvent(QCloseEvent *event)
     }
 }
 
+void MainWindow::changeEvent(QEvent *event)
+{
+#ifdef Q_OS_MACOS
+    if (event->type() == QEvent::PaletteChange) {
+        updateTrayIcon(m_lightOn);
+    }
+#endif
+    QWidget::changeEvent(event);
+}
+
 bool MainWindow::eventFilter(QObject *obj, QEvent *event)
 {
     if (event->type() == QEvent::MouseButtonDblClick) {
