@@ -219,7 +219,9 @@ void MainWindow::setupTrayIcon()
     QAction *exitAction = m_trayMenu->addAction("Exit");
 #endif
 
+#ifndef Q_OS_MACOS
     m_trayIcon->setContextMenu(m_trayMenu);
+#endif
 
     // Connect tray actions
     connect(m_trayPowerOnAction, &QAction::triggered, this, [this]() { m_api->setPower(true); });
@@ -310,6 +312,13 @@ void MainWindow::updateTrayActions()
 void MainWindow::onTrayActivated(QSystemTrayIcon::ActivationReason reason)
 {
     qDebug() << "Tray activated with reason:" << reason;
+
+#ifdef Q_OS_MACOS
+    if (reason == QSystemTrayIcon::Context) {
+        m_trayMenu->popup(QCursor::pos());
+        return;
+    }
+#endif
 
     if (reason == QSystemTrayIcon::Trigger) {
         // Single-click: toggle light power
