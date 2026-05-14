@@ -315,7 +315,11 @@ void MainWindow::onTrayActivated(QSystemTrayIcon::ActivationReason reason)
 
 #ifdef Q_OS_MACOS
     if (reason == QSystemTrayIcon::Context) {
-        m_trayMenu->popup(QCursor::pos());
+        if (m_trayMenu->isVisible()) {
+            m_trayMenu->hide();
+        } else {
+            m_trayMenu->popup(QCursor::pos());
+        }
         return;
     }
 #endif
@@ -327,9 +331,12 @@ void MainWindow::onTrayActivated(QSystemTrayIcon::ActivationReason reason)
             m_api->setPower(!m_lightOn);
         }
     } else if (reason == QSystemTrayIcon::DoubleClick) {
-        // Double-click: show/hide window
+        // Double-click: show/hide window (Linux only — on macOS Qt can't distinguish
+        // left vs right double-click, so this would fire on rapid right-clicks too)
+#ifndef Q_OS_MACOS
         qDebug() << "Double-click detected - toggling window";
         toggleWindow();
+#endif
 #ifndef Q_OS_MACOS
     } else if (reason == QSystemTrayIcon::MiddleClick) {
         // Middle-click: show/hide window (more reliable on Linux)
