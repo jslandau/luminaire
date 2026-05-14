@@ -8,6 +8,7 @@
 #include <QMouseEvent>
 #include <QCloseEvent>
 #include <QApplication>
+#include <QStyleHints>
 #include <QPainter>
 #include <QTimer>
 #include <QDebug>
@@ -163,6 +164,7 @@ void MainWindow::showWindow()
 
     show();
 
+#ifdef Q_OS_LINUX
     // On Wayland (especially KDE Plasma), window activation is restricted.
     // We need to use a combination of techniques to bring window to front.
     setWindowState(Qt::WindowActive);
@@ -171,6 +173,7 @@ void MainWindow::showWindow()
 
     // Force focus - helps on some platforms
     setFocus();
+#endif
 
     updateShowHideAction();
 }
@@ -210,9 +213,15 @@ void MainWindow::setupTrayIcon()
     m_trayMenu->addSeparator();
     m_trayShowHideAction = m_trayMenu->addAction("Show Window");
     m_trayMenu->addSeparator();
+#ifdef Q_OS_MACOS
+    QAction *exitAction = m_trayMenu->addAction("Quit");
+#else
     QAction *exitAction = m_trayMenu->addAction("Exit");
+#endif
 
+#ifndef Q_OS_MACOS
     m_trayIcon->setContextMenu(m_trayMenu);
+#endif
 
     // Connect tray actions
     connect(m_trayPowerOnAction, &QAction::triggered, this, [this]() { m_api->setPower(true); });
@@ -224,6 +233,12 @@ void MainWindow::setupTrayIcon()
     connect(exitAction, &QAction::triggered, qApp, &QApplication::quit);
 
     connect(m_trayIcon, &QSystemTrayIcon::activated, this, &MainWindow::onTrayActivated);
+
+#ifdef Q_OS_MACOS
+    connect(qApp->styleHints(), &QStyleHints::colorSchemeChanged, this, [this](Qt::ColorScheme) {
+        updateTrayIcon(m_lightOn);
+    });
+#endif
 
     updateTrayIcon(false);
     updateTrayActions();
@@ -240,8 +255,14 @@ QIcon MainWindow::createLightbulbIcon(bool on)
     painter.setRenderHint(QPainter::Antialiasing);
 
     // Bulb color
+#ifdef Q_OS_MACOS
+    const bool darkMode = QGuiApplication::styleHints()->colorScheme() == Qt::ColorScheme::Dark;
+    QColor bulbColor = on ? QColor(255, 220, 80) : (darkMode ? QColor(200, 200, 200) : QColor(128, 128, 128));
+    QColor outlineColor = on ? QColor(200, 160, 40) : (darkMode ? QColor(150, 150, 150) : QColor(80, 80, 80));
+#else
     QColor bulbColor = on ? QColor(255, 220, 80) : QColor(128, 128, 128);
     QColor outlineColor = on ? QColor(200, 160, 40) : QColor(80, 80, 80);
+#endif
 
     // Draw glow if on
     if (on) {
@@ -292,6 +313,17 @@ void MainWindow::onTrayActivated(QSystemTrayIcon::ActivationReason reason)
 {
     qDebug() << "Tray activated with reason:" << reason;
 
+#ifdef Q_OS_MACOS
+    if (reason == QSystemTrayIcon::Context) {
+        if (m_trayMenu->isVisible()) {
+            m_trayMenu->hide();
+        } else {
+            m_trayMenu->popup(QCursor::pos());
+        }
+        return;
+    }
+#endif
+
     if (reason == QSystemTrayIcon::Trigger) {
         // Single-click: toggle light power
         qDebug() << "Single-click detected - toggling light";
@@ -299,13 +331,18 @@ void MainWindow::onTrayActivated(QSystemTrayIcon::ActivationReason reason)
             m_api->setPower(!m_lightOn);
         }
     } else if (reason == QSystemTrayIcon::DoubleClick) {
-        // Double-click: show/hide window
+        // Double-click: show/hide window (Linux only — on macOS Qt can't distinguish
+        // left vs right double-click, so this would fire on rapid right-clicks too)
+#ifndef Q_OS_MACOS
         qDebug() << "Double-click detected - toggling window";
         toggleWindow();
+#endif
+#ifndef Q_OS_MACOS
     } else if (reason == QSystemTrayIcon::MiddleClick) {
         // Middle-click: show/hide window (more reliable on Linux)
         qDebug() << "Middle-click detected - toggling window";
         toggleWindow();
+#endif
     }
 }
 
@@ -318,6 +355,16 @@ void MainWindow::closeEvent(QCloseEvent *event)
     } else {
         event->accept();
     }
+}
+
+void MainWindow::changeEvent(QEvent *event)
+{
+#ifdef Q_OS_MACOS
+    if (event->type() == QEvent::PaletteChange) {
+        updateTrayIcon(m_lightOn);
+    }
+#endif
+    QWidget::changeEvent(event);
 }
 
 bool MainWindow::eventFilter(QObject *obj, QEvent *event)

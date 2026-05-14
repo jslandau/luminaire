@@ -4,11 +4,11 @@ Control your Elgato Key Light Neo from your desktop.
 
 ## What it does
 
-Luminaire provides a simple Qt6 GUI to control your Elgato Key Light Neo. It runs in your system tray and lets you toggle the light on/off, adjust brightness (0-100), and set color temperature (2900K-7000K warm to cool).
+Luminaire provides a simple Qt6 GUI to control your Elgato Key Light Neo. It runs in your system tray (Linux) or menu bar (macOS) and lets you toggle the light on/off, adjust brightness (0-100), and set color temperature (2900K-7000K warm to cool).
 
 **Key features:**
-- Single-click the tray icon to toggle power
-- Middle-click (or double-click) to show/hide the control window
+- Click the tray/menu-bar icon to toggle power
+- Double-click (or middle-click on Linux) to show/hide the control window
 - Auto-reconnect on startup when you've saved an IP address
 - Restores your last brightness and temperature settings
 - Direct edit: double-click any value label to type an exact number
@@ -22,11 +22,10 @@ Luminaire provides a simple Qt6 GUI to control your Elgato Key Light Neo. It run
 
 ## Build and install
 
-```bash
-# Configure the build
-cmake -B build
+### Linux
 
-# Compile
+```bash
+cmake -B build
 cmake --build build
 
 # Run directly
@@ -38,6 +37,18 @@ sudo cmake --install build
 
 After installing system-wide, Luminaire appears in your application menu under Utilities.
 
+### macOS
+
+```bash
+cmake -B build
+cmake --build build
+
+# Run the app bundle
+open ./build/luminaire.app
+```
+
+Luminaire runs as a menu-bar app (`LSUIElement=true`) with no Dock icon. There is no system-wide install target on macOS; copy `luminaire.app` to `/Applications` if you want it in Launchpad.
+
 ## Using Luminaire
 
 1. Find your light's IP address (check your router or the Elgato Control Center app)
@@ -47,16 +58,36 @@ After installing system-wide, Luminaire appears in your application menu under U
 
 Luminaire saves your settings automatically. The next time you launch it, it'll reconnect to your light and restore your previous brightness and temperature.
 
-### System tray
+### System tray / menu bar
 
-When you close the window, Luminaire stays running in your system tray. The tray icon changes to show the light's state:
+When you close the window, Luminaire stays running in the background. The icon changes to show the light's state:
 - Lit bulb: light is on
 - Gray bulb: light is off
 
-Right-click the tray icon for options:
-- Show/Hide Window
-- Light On/Off
-- Exit
+#### Linux (system tray)
+
+| Gesture | Action |
+|---------|--------|
+| Single-click | Toggle light on/off |
+| Double-click | Show/hide control window |
+| Middle-click | Show/hide control window |
+| Right-click | Context menu |
+
+Context menu items: Show/Hide Window, Light On, Light Off, Exit.
+
+#### macOS (menu bar)
+
+| Gesture | Action |
+|---------|--------|
+| Left-click | Toggle light on/off |
+| Double-click | Show/hide control window |
+| Right-click | Context menu |
+
+Middle-click is not a standard macOS menu-bar gesture and is not wired up.
+
+Context menu items: Show/Hide Window, Light On, Light Off, Quit.
+
+The menu-bar icon adapts automatically to macOS light/dark appearance.
 
 ## Troubleshooting
 

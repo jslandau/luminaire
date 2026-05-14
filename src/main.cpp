@@ -8,6 +8,9 @@ int main(int argc, char *argv[])
     app.setOrganizationName("Luminaire");
 
     bool minimized = app.arguments().contains("--minimized");
+#ifdef Q_OS_MACOS
+    minimized = true;
+#endif
 
     MainWindow window;
     if (!minimized) {

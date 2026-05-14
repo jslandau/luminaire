@@ -10,8 +10,8 @@ The approach is deliberately minimal: no new source files, no new classes, and n
 
 - `cmake -B build && cmake --build build` on macOS produces `build/luminaire.app`, launchable from Finder and drag-installable to /Applications
 - The app runs as a menu bar-only app (no Dock icon) using QSystemTrayIcon
-- Left-click toggles light on/off; right-click shows a context menu with "Show Config", "Light On/Off", and "Quit"
-- Right-click "Show Config" opens the existing MainWindow (IP, brightness, temperature)
+- Left-click toggles light on/off; right-click shows a context menu with "Show Window", "Light On/Off", and "Quit"
+- Right-click "Show Window" opens the existing MainWindow (IP, brightness, temperature)
 - The `.app` bundle includes a hand-crafted `.icns` icon
 - The Linux build is unaffected; the single CMakeLists.txt handles both platforms
 - Wayland-specific code is guarded with `#ifdef Q_OS_LINUX`
@@ -29,8 +29,8 @@ The approach is deliberately minimal: no new source files, no new classes, and n
 ### macos-support.AC2: Menu bar tray icon and interactions
 - **macos-support.AC2.1 Success:** Tray icon appears in the macOS menu bar when app is running
 - **macos-support.AC2.2 Success:** Left-click on tray icon toggles light on/off (when connected)
-- **macos-support.AC2.3 Success:** Right-click on tray icon shows context menu with "Show Config", "Light On", "Light Off", "Quit"
-- **macos-support.AC2.4 Success:** "Show Config" opens the MainWindow with IP, brightness, and temperature controls
+- **macos-support.AC2.3 Success:** Right-click on tray icon shows context menu with "Show Window", "Light On", "Light Off", "Quit"
+- **macos-support.AC2.4 Success:** "Show Window" opens the MainWindow with IP, brightness, and temperature controls
 - **macos-support.AC2.5 Success:** "Quit" exits the app
 - **macos-support.AC2.6 Edge:** Left-click when not connected does nothing (no crash)
 
@@ -85,7 +85,7 @@ Changes touch four areas:
 
 **src/MainWindow.cpp / MainWindow.h** — four targeted changes:
 - `showWindow()`: Wayland window-activation block wrapped in `#ifdef Q_OS_LINUX`
-- `setupTrayIcon()`: "Exit" label becomes "Quit" on macOS via `#ifdef Q_OS_MAC`
+- `setupTrayIcon()`: "Exit" label becomes "Quit" on macOS via `#ifdef Q_OS_MAC`; the menu action for window show/hide is labeled "Show Window" and updates dynamically based on visibility
 - `onTrayActivated()`: `MiddleClick` branch wrapped in `#ifndef Q_OS_MAC`
 - New `changeEvent(QEvent*)`: responds to `QEvent::PaletteChange` by calling `updateTrayIcon(m_lightOn)` to redraw with current theme
 - `createLightbulbIcon(bool on)`: when `on == false`, checks dark mode via `qApp->palette().color(QPalette::Window).lightness() < 128` and uses `QColor(200,200,200)` instead of the current dark gray so the off-state icon is visible on a dark menu bar
@@ -97,50 +97,3 @@ Changes touch four areas:
 The codebase has no prior macOS-specific code. All existing platform-specific behavior targets Linux/Wayland via comments but no `#ifdef` guards. This design introduces the first platform guards, following Qt's standard convention (`Q_OS_LINUX`, `Q_OS_MAC`).
 
 CMake structure follows the existing single-file pattern; the `if(APPLE)` block extends it rather than splitting into separate files.
-
-## Implementation Phases
-
-<!-- START_PHASE_1 -->
-### Phase 1: CMake and Info.plist
-**Goal:** Make `cmake --build` on macOS produce a valid `.app` bundle skeleton.
-
-**Components:**
-- `CMakeLists.txt` — `if(APPLE)` block with `MACOSX_BUNDLE TRUE`, `MACOSX_BUNDLE_INFO_PLIST`, icns source file with `MACOSX_PACKAGE_LOCATION "Resources"`, `if(NOT APPLE)` guard on Linux install rules
-- `data/Info.plist.in` — new file with `LSUIElement`, `CFBundleIconFile`, `CFBundleName`, `CFBundleIdentifier`, `CFBundleShortVersionString`, `NSHighResolutionCapable`
-
-**Dependencies:** None (first phase); requires Qt6 installed via Homebrew and a placeholder `.icns` file for the build to succeed (even a 1×1 PNG renamed `.icns` works at this stage)
-
-**Done when:** `cmake -B build && cmake --build build` on macOS produces `build/luminaire.app`; app launches from Finder; no Dock icon appears; Cmd+Tab does not show the app
-<!-- END_PHASE_1 -->
-
-<!-- START_PHASE_2 -->
-### Phase 2: Icon Assets
-**Goal:** Produce a production-quality `.icns` for the bundle.
-
-**Components:**
-- `data/luminaire.iconset/` — PNG exports of `data/luminaire.svg` at 16, 32, 128, 256, 512 px and @2x variants (10 files total), produced with `rsvg-convert` or Inkscape
-- `data/luminaire.icns` — generated once via `iconutil -c icns data/luminaire.iconset -o data/luminaire.icns`, committed to the repo
-
-**Dependencies:** Phase 1 (bundle structure must exist to verify icon appears correctly)
-
-**Done when:** App icon appears correctly in Finder, the menu bar tray icon renders cleanly at menu bar size, and `data/luminaire.icns` is committed alongside `data/luminaire.iconset/`
-<!-- END_PHASE_2 -->
-
-<!-- START_PHASE_3 -->
-### Phase 3: Source Code Guards and Dark Mode Adaptation
-**Goal:** Guard Linux-specific code paths and make the tray icon adapt to macOS dark/light mode.
-
-**Components:**
-- `src/MainWindow.cpp` — four changes: `#ifdef Q_OS_LINUX` around Wayland activation block in `showWindow()`; `#ifdef Q_OS_MAC` for "Quit" label in `setupTrayIcon()`; `#ifndef Q_OS_MAC` around `MiddleClick` branch in `onTrayActivated()`; new `changeEvent(QEvent*)` implementation; dark mode branch in `createLightbulbIcon(bool on)`
-- `src/MainWindow.h` — `changeEvent(QEvent*)` declaration in `protected` section
-
-**Dependencies:** Phase 1 (app must be running on macOS to verify tray behavior)
-
-**Done when:** App builds and runs cleanly on both macOS and Linux; tray icon is visible in both light and dark mode on macOS; "Quit" appears in the macOS context menu; "Exit" remains on Linux
-<!-- END_PHASE_3 -->
-
-## Additional Considerations
-
-**`macdeployqt`:** For personal use, Qt frameworks are found via `DYLD_LIBRARY_PATH` or rpath from the Homebrew Qt installation, so the bare `.app` bundle from `cmake --build` runs on the build machine without running `macdeployqt`. Distributing to another machine would require `macdeployqt` to bundle Qt frameworks inside the `.app` — out of scope here.
-
-**Signing/notarization:** Not required for personal use. The app will trigger Gatekeeper on first launch; right-click → Open bypasses this.
