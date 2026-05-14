@@ -8,6 +8,7 @@
 #include <QMouseEvent>
 #include <QCloseEvent>
 #include <QApplication>
+#include <QStyleHints>
 #include <QPainter>
 #include <QTimer>
 #include <QDebug>
@@ -163,6 +164,7 @@ void MainWindow::showWindow()
 
     show();
 
+#ifdef Q_OS_LINUX
     // On Wayland (especially KDE Plasma), window activation is restricted.
     // We need to use a combination of techniques to bring window to front.
     setWindowState(Qt::WindowActive);
@@ -171,6 +173,7 @@ void MainWindow::showWindow()
 
     // Force focus - helps on some platforms
     setFocus();
+#endif
 
     updateShowHideAction();
 }
