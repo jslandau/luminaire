@@ -56,8 +56,12 @@ private:
 
     KeyLightAPI *m_api;
     QTimer *m_refreshTimer;
+    QTimer *m_resumeRefreshTimer;
+    QTimer *m_brightnessSyncTimer;
+    QTimer *m_temperatureSyncTimer;
     int m_consecutiveErrors = 0;
     static constexpr int MAX_CONSECUTIVE_ERRORS = 3;
+    static constexpr int LOCAL_UPDATE_GRACE_MS = 1500;
 
     QSystemTrayIcon *m_trayIcon;
     QMenu *m_trayMenu;
@@ -83,6 +87,8 @@ private:
     QLineEdit *m_temperatureEdit;
 
     bool m_connected = false;
+    int m_pendingBrightness = -1;
+    int m_pendingTemperature = -1;
 };
 
 #endif // MAINWINDOW_H

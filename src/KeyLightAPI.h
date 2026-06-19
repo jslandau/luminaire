@@ -38,6 +38,8 @@ public:
 signals:
     void stateReceived(bool on, int brightness, int temperature);
     void errorOccurred(const QString &error);
+    // Emitted only when transitioning from not-yet-connected to connected,
+    // not on every successful periodic refresh.
     void connectionSucceeded();
 
 private slots:
@@ -51,6 +53,7 @@ private:
     QNetworkAccessManager *m_manager;
     QString m_ip;
     int m_port = 9123;
+    bool m_hasSuccessfulConnection = false;
 };
 
 #endif // KEYLIGHTAPI_H

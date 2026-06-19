@@ -14,6 +14,7 @@ void KeyLightAPI::setHost(const QString &ip, int port)
 {
     m_ip = ip;
     m_port = port;
+    m_hasSuccessfulConnection = false;
 }
 
 QUrl KeyLightAPI::lightsUrl() const
@@ -63,7 +64,10 @@ void KeyLightAPI::onGetFinished(QNetworkReply *reply)
     int brightness = light["brightness"].toInt();
     int temperature = light["temperature"].toInt();
 
-    emit connectionSucceeded();
+    if (!m_hasSuccessfulConnection) {
+        m_hasSuccessfulConnection = true;
+        emit connectionSucceeded();
+    }
     emit stateReceived(on, brightness, apiToKelvin(temperature));
 }
 

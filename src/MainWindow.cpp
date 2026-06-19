@@ -17,6 +17,9 @@ MainWindow::MainWindow(QWidget *parent)
     : QWidget(parent)
     , m_api(new KeyLightAPI(this))
     , m_refreshTimer(new QTimer(this))
+    , m_resumeRefreshTimer(new QTimer(this))
+    , m_brightnessSyncTimer(new QTimer(this))
+    , m_temperatureSyncTimer(new QTimer(this))
 {
     setWindowTitle("Luminaire");
     setWindowIcon(createLightbulbIcon(true));
@@ -142,6 +145,26 @@ MainWindow::MainWindow(QWidget *parent)
     // Periodic refresh to stay in sync with external changes
     m_refreshTimer->setInterval(5000);
     connect(m_refreshTimer, &QTimer::timeout, m_api, &KeyLightAPI::fetchState);
+
+    m_resumeRefreshTimer->setSingleShot(true);
+    m_resumeRefreshTimer->setInterval(LOCAL_UPDATE_GRACE_MS);
+    connect(m_resumeRefreshTimer, &QTimer::timeout, this, [this]() {
+        if (m_connected && !m_refreshTimer->isActive()) {
+            m_refreshTimer->start();
+        }
+    });
+
+    m_brightnessSyncTimer->setSingleShot(true);
+    m_brightnessSyncTimer->setInterval(LOCAL_UPDATE_GRACE_MS);
+    connect(m_brightnessSyncTimer, &QTimer::timeout, this, [this]() {
+        m_pendingBrightness = -1;
+    });
+
+    m_temperatureSyncTimer->setSingleShot(true);
+    m_temperatureSyncTimer->setInterval(LOCAL_UPDATE_GRACE_MS);
+    connect(m_temperatureSyncTimer, &QTimer::timeout, this, [this]() {
+        m_pendingTemperature = -1;
+    });
 
     updateBrightnessDisplay(m_brightnessSlider->value());
     updateTemperatureDisplay(m_temperatureSlider->value());
@@ -404,6 +427,10 @@ void MainWindow::onBrightnessEditFinished()
     m_brightnessSlider->setValue(value);
     m_brightnessStack->setCurrentWidget(m_brightnessLabel);
     if (m_connected) {
+        m_pendingBrightness = value;
+        m_refreshTimer->stop();
+        m_resumeRefreshTimer->start();
+        m_brightnessSyncTimer->start();
         m_api->setBrightness(value);
         Config::saveBrightness(value);
     }
@@ -416,6 +443,10 @@ void MainWindow::onTemperatureEditFinished()
     m_temperatureSlider->setValue(value);
     m_temperatureStack->setCurrentWidget(m_temperatureLabel);
     if (m_connected) {
+        m_pendingTemperature = value;
+        m_refreshTimer->stop();
+        m_resumeRefreshTimer->start();
+        m_temperatureSyncTimer->start();
         m_api->setTemperature(value);
         Config::saveTemperature(value);
     }
@@ -497,7 +528,9 @@ void MainWindow::onConnectionSucceeded()
     updateTrayActions();
     m_refreshTimer->start();
 
-    // Restore saved brightness/temperature if available
+    // On connect, restore locally saved brightness/temperature back to the light.
+    // This is intentional, but now only runs on a real connection transition,
+    // not on every successful periodic refresh.
     int savedBrightness = Config::loadBrightness();
     int savedTemperature = Config::loadTemperature();
     if (savedBrightness >= 0 || savedTemperature >= 0) {
@@ -553,13 +586,30 @@ void MainWindow::onStateReceived(bool on, int brightness, int temperature)
     updateTrayIcon(on);
     updatePowerButton(on);
 
-    // Only update sliders if not currently dragging
-    if (m_brightnessSlider->isSliderDown() || m_temperatureSlider->isSliderDown()) {
-        return;
+    if (m_pendingBrightness == brightness) {
+        m_pendingBrightness = -1;
+        m_brightnessSyncTimer->stop();
     }
 
-    m_brightnessSlider->setValue(brightness);
-    m_temperatureSlider->setValue(temperature);
+    if (m_pendingTemperature == temperature) {
+        m_pendingTemperature = -1;
+        m_temperatureSyncTimer->stop();
+    }
+
+    if (m_connected && m_pendingBrightness < 0 && m_pendingTemperature < 0) {
+        m_resumeRefreshTimer->stop();
+        if (!m_refreshTimer->isActive()) {
+            m_refreshTimer->start();
+        }
+    }
+
+    if (!m_brightnessSlider->isSliderDown() && m_pendingBrightness < 0) {
+        m_brightnessSlider->setValue(brightness);
+    }
+
+    if (!m_temperatureSlider->isSliderDown() && m_pendingTemperature < 0) {
+        m_temperatureSlider->setValue(temperature);
+    }
 }
 
 void MainWindow::onPowerToggled()
@@ -576,6 +626,10 @@ void MainWindow::onBrightnessSliderReleased()
 {
     if (m_connected) {
         int value = m_brightnessSlider->value();
+        m_pendingBrightness = value;
+        m_refreshTimer->stop();
+        m_resumeRefreshTimer->start();
+        m_brightnessSyncTimer->start();
         m_api->setBrightness(value);
         Config::saveBrightness(value);
     }
@@ -590,6 +644,8 @@ void MainWindow::onTemperatureSliderReleased()
 {
     if (m_connected) {
         int value = m_temperatureSlider->value();
+        m_pendingTemperature = value;
+        m_temperatureSyncTimer->start();
         m_api->setTemperature(value);
         Config::saveTemperature(value);
     }
