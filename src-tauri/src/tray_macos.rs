@@ -125,6 +125,7 @@ pub fn setup_tray(app: &AppHandle) -> tauri::Result<()> {
                         let _ = window.set_focus();
                     }
                 }
+                update_show_hide_label(app);
             }
             "quit" => {
                 app.exit(0);
@@ -158,17 +159,30 @@ pub fn update_tray_icon(app: &AppHandle, light_on: bool) {
     }
 }
 
+/// Update the "Show Window"/"Hide Window" menu item label based on current window visibility.
+pub fn update_show_hide_label(app: &AppHandle) {
+    let show_hide = {
+        let tray = tray_state(app);
+        let state = tray.lock().unwrap();
+        state.show_hide_item.clone()
+    };
+    if let Some(item) = &show_hide {
+        let window = app.get_webview_window("main");
+        let is_visible = window
+            .map(|w| w.is_visible().unwrap_or(false))
+            .unwrap_or(false);
+        let label = if is_visible { "Hide Window" } else { "Show Window" };
+        let _ = item.set_text(label);
+    }
+}
+
 /// Update menu item enabled states based on connection state.
 pub fn update_menu_state(app: &AppHandle, connected: bool) {
-    let (power_on, power_off, show_hide) = {
+    let (power_on, power_off) = {
         let tray = tray_state(app);
         let mut state = tray.lock().unwrap();
         state.connected = connected;
-        (
-            state.power_on_item.clone(),
-            state.power_off_item.clone(),
-            state.show_hide_item.clone(),
-        )
+        (state.power_on_item.clone(), state.power_off_item.clone())
     };
 
     if let Some(item) = &power_on {
@@ -178,15 +192,7 @@ pub fn update_menu_state(app: &AppHandle, connected: bool) {
         let _ = item.set_enabled(connected);
     }
 
-    // Update show/hide label based on window visibility
-    if let Some(item) = &show_hide {
-        let window = app.get_webview_window("main");
-        let is_visible = window
-            .map(|w| w.is_visible().unwrap_or(false))
-            .unwrap_or(false);
-        let label = if is_visible { "Hide Window" } else { "Show Window" };
-        let _ = item.set_text(label);
-    }
+    update_show_hide_label(app);
 }
 
 /// Handle theme change — re-render the tray icon.

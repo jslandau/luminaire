@@ -102,6 +102,8 @@ pub fn run() {
                 tauri::WindowEvent::CloseRequested { api, .. } => {
                     api.prevent_close();
                     let _ = window.hide();
+                    #[cfg(target_os = "macos")]
+                    crate::tray_macos::update_show_hide_label(window.app_handle());
                 }
                 // macOS: Theme change detection (AC5.5)
                 #[cfg(target_os = "macos")]

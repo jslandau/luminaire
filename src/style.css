@@ -4,10 +4,40 @@
     box-sizing: border-box;
 }
 
+:root {
+    color-scheme: light dark;
+
+    --bg: transparent;
+    --fg: #000;
+    --status-muted: gray;
+    --border: #ccc;
+    --border-input: #aaa;
+    --border-btn: #888;
+    --title-color: #555;
+    --input-disabled-bg: #eee;
+    --input-disabled-fg: #999;
+    --muted: #888;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #1e1e1e;
+        --fg: #e0e0e0;
+        --status-muted: #999;
+        --border: #555;
+        --border-input: #666;
+        --border-btn: #666;
+        --title-color: #aaa;
+        --input-disabled-bg: #3a3a3a;
+        --input-disabled-fg: #777;
+    }
+}
+
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     font-size: 13px;
-    background: transparent;
+    background: var(--bg);
+    color: var(--fg);
     user-select: none;
     -webkit-user-select: none;
 }
@@ -20,7 +50,7 @@ body {
 }
 
 .group {
-    border: 1px solid #ccc;
+    border: 1px solid var(--border);
     border-radius: 6px;
     padding: 8px;
 }
@@ -28,7 +58,7 @@ body {
 .group-title {
     font-weight: bold;
     font-size: 12px;
-    color: #555;
+    color: var(--title-color);
     margin-bottom: 6px;
 }
 
@@ -46,19 +76,19 @@ body {
 #ipInput {
     flex: 1;
     padding: 3px 6px;
-    border: 1px solid #aaa;
+    border: 1px solid var(--border-input);
     border-radius: 4px;
     font-size: 13px;
 }
 
 #ipInput:disabled {
-    background: #eee;
-    color: #999;
+    background: var(--input-disabled-bg);
+    color: var(--input-disabled-fg);
 }
 
 #connectBtn {
     padding: 4px 12px;
-    border: 1px solid #888;
+    border: 1px solid var(--border-btn);
     border-radius: 4px;
     cursor: pointer;
     white-space: nowrap;
@@ -73,6 +103,7 @@ body {
 .status {
     font-size: 12px;
     padding: 2px 4px;
+    color: var(--status-muted);
 }
 
 /* Power button */
@@ -116,7 +147,7 @@ body {
     width: 100%;
     text-align: center;
     padding: 2px;
-    border: 1px solid #888;
+    border: 1px solid var(--border-btn);
     border-radius: 4px;
     font-size: 14px;
 }
@@ -135,6 +166,6 @@ input[type="range"]:disabled {
     display: flex;
     justify-content: space-between;
     font-size: 10px;
-    color: #888;
+    color: var(--muted);
     margin-top: 2px;
 }

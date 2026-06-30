@@ -26,7 +26,7 @@ let editingTemperature = false;
 
 function setStatus(text, color) {
     statusLabel.textContent = text;
-    statusLabel.style.color = color;
+    statusLabel.style.color = color === 'gray' ? '' : color;
 }
 
 function updatePowerButton(on) {
