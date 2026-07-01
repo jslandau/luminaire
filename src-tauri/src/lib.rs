@@ -40,9 +40,8 @@ pub fn run() {
 
             #[cfg(target_os = "linux")]
             {
-                tray_linux::setup_tray(app.handle()).map_err(|e| {
-                    tauri::Error::Anyhow(anyhow::anyhow!("{}", e))
-                })?;
+                tray_linux::setup_tray(app.handle())
+                    .map_err(|e| tauri::Error::Anyhow(anyhow::anyhow!("{}", e)))?;
             }
 
             // Auto-connect if we have a saved IP (AC2.3)
@@ -55,14 +54,7 @@ pub fn run() {
                     let state = app_handle.state::<SharedAppState>();
                     let config = app_handle.state::<SharedConfig>();
                     let client = app_handle.state::<SharedClient>();
-                    let _ = commands::connect(
-                        app_handle.clone(),
-                        state,
-                        config,
-                        client,
-                        ip,
-                    )
-                    .await;
+                    let _ = commands::connect(app_handle.clone(), state, config, client, ip).await;
                 });
             }
 
@@ -183,17 +175,23 @@ async fn refresh_loop(app: tauri::AppHandle) {
 
                 // If recovering from an error, restore the "Connected" status (M1)
                 if was_in_error {
-                    let _ = app.emit("status-update", commands::StatusUpdatePayload {
-                        text: format!("Connected to {}", ip),
-                        color: "green".to_string(),
-                    });
+                    let _ = app.emit(
+                        "status-update",
+                        commands::StatusUpdatePayload {
+                            text: format!("Connected to {}", ip),
+                            color: "green".to_string(),
+                        },
+                    );
                 }
 
-                let _ = app.emit("state-received", commands::StateReceivedPayload {
-                    on: light_state.on,
-                    brightness: light_state.brightness,
-                    temperature: light_state.temperature_kelvin,
-                });
+                let _ = app.emit(
+                    "state-received",
+                    commands::StateReceivedPayload {
+                        on: light_state.on,
+                        brightness: light_state.brightness,
+                        temperature: light_state.temperature_kelvin,
+                    },
+                );
 
                 // Update tray icon
                 tray::update_tray(&app, light_state.on);
@@ -209,19 +207,25 @@ async fn refresh_loop(app: tauri::AppHandle) {
 
                 let msg = e.to_string();
                 if should_disconnect {
-                    let _ = app.emit("error", commands::ErrorPayload {
-                        message: msg,
-                        consecutive_errors: count,
-                        disconnected: true,
-                    });
+                    let _ = app.emit(
+                        "error",
+                        commands::ErrorPayload {
+                            message: msg,
+                            consecutive_errors: count,
+                            disconnected: true,
+                        },
+                    );
                     tray::update_tray_menu(&app, false);
                     tray::update_tray(&app, false);
                 } else {
-                    let _ = app.emit("error", commands::ErrorPayload {
-                        message: msg,
-                        consecutive_errors: count,
-                        disconnected: false,
-                    });
+                    let _ = app.emit(
+                        "error",
+                        commands::ErrorPayload {
+                            message: msg,
+                            consecutive_errors: count,
+                            disconnected: false,
+                        },
+                    );
                 }
             }
         }

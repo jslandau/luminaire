@@ -24,28 +24,49 @@ Luminaire is a Rust/Tauri v2 desktop app that controls an Elgato Key Light Neo o
 
 ```bash
 # Development mode (hot reload on Rust changes)
-cargo tauri dev
+make dev
 
-# Production build (.app bundle on macOS, binary + .desktop on Linux)
-cargo tauri build
+# Production build (.app bundle on macOS, deb/rpm packages on Linux)
+make build
 
 # Unit tests
-cd src-tauri && cargo test
+make test
+
+# User-local install from source
+make install-user
 ```
 
 ### Linux
 
-`cargo tauri build` produces distributable bundles (deb/rpm/AppImage). For manual installation, the committed `src-tauri/luminaire.desktop` and `src-tauri/icons/icon.svg` are the install sources — the `.desktop` file references the icon by the name `luminaire` (`Icon=luminaire`), not by filename.
+`make install-user` is the recommended source install path on Linux distributions that do not use the generated packages directly, such as CachyOS/Arch. It installs the binary with Cargo and installs/updates the desktop entry and icon under the user XDG data directory:
+
+```text
+~/.cargo/bin/luminaire
+~/.local/share/applications/luminaire.desktop
+~/.local/share/icons/hicolor/scalable/apps/luminaire.svg
+```
+
+Make sure Cargo's bin directory, usually `~/.cargo/bin`, is on your `PATH`.
+
+`make build` produces distributable Linux packages under `src-tauri/target/release/bundle/`.
 
 ### macOS
 
-`cargo tauri build` produces `Luminaire.app` at `src-tauri/target/release/bundle/macos/Luminaire.app`.
+`make install-user` builds the app and copies `Luminaire.app` to `~/Applications/Luminaire.app`.
 
-> **Note:** `cargo install --path .` (or `cargo build --release`) produces only the raw executable and **does not** create the `.app` bundle. Use `cargo tauri build` to get the bundle.
+`make build` produces `Luminaire.app` at `src-tauri/target/release/bundle/macos/Luminaire.app`.
 
-The app runs as a menu-bar app (`LSUIElement=true`): no Dock icon, no Cmd+Tab entry. To install it, copy `Luminaire.app` to `/Applications`.
+> **Note:** `cargo install --path .` does not apply to this Tauri layout, and `cargo install --path src-tauri` installs only the raw executable. Use `make install-user` for desktop integration.
 
-Since the app is unsigned, Gatekeeper will block it on first launch. Right-click the app and choose **Open**, or run it from the terminal, then confirm the prompt.
+The app runs as a menu-bar app (`LSUIElement=true`): no Dock icon, no Cmd+Tab entry.
+
+Since the app is unsigned, Gatekeeper may block it on first launch. Right-click the app and choose **Open**, or run it from the terminal, then confirm the prompt.
+
+To remove a user-local install, run:
+
+```bash
+make uninstall-user
+```
 
 ## Using Luminaire
 

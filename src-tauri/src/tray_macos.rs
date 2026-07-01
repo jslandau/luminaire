@@ -171,7 +171,11 @@ pub fn update_show_hide_label(app: &AppHandle) {
         let is_visible = window
             .map(|w| w.is_visible().unwrap_or(false))
             .unwrap_or(false);
-        let label = if is_visible { "Hide Window" } else { "Show Window" };
+        let label = if is_visible {
+            "Hide Window"
+        } else {
+            "Show Window"
+        };
         let _ = item.set_text(label);
     }
 }
@@ -233,19 +237,23 @@ fn detect_macos_theme() -> Theme {
 
         // appearance.name returns NSAppearanceName (NSString)
         let name_sel = objc::sel!(name);
-        let name_str: *mut objc::runtime::Object = objc::msg_send![appearance, performSelector: name_sel];
+        let name_str: *mut objc::runtime::Object =
+            objc::msg_send![appearance, performSelector: name_sel];
         if name_str.is_null() {
             return Theme::Light;
         }
 
         // Convert NSString to Rust String via UTF8String
         let utf8_sel = objc::sel!(UTF8String);
-        let c_str: *const std::os::raw::c_char = objc::msg_send![name_str, performSelector: utf8_sel];
+        let c_str: *const std::os::raw::c_char =
+            objc::msg_send![name_str, performSelector: utf8_sel];
         if c_str.is_null() {
             return Theme::Light;
         }
 
-        let name = std::ffi::CStr::from_ptr(c_str).to_string_lossy().to_string();
+        let name = std::ffi::CStr::from_ptr(c_str)
+            .to_string_lossy()
+            .to_string();
 
         if name.contains("Dark") {
             return Theme::Dark;

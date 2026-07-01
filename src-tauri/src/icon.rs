@@ -1,11 +1,11 @@
-/// Tray icon renderer — ports createLightbulbIcon from MainWindow.cpp.
-///
-/// The C++ version uses QPainter on a 32x32 pixmap with antialiasing.
-/// We hand-compute the pixel buffer to reproduce the same shapes:
-///   - Glow (radial gradient) when on
-///   - Bulb (ellipse at 6,2 size 20x18)
-///   - Base trapezoid (10,19)-(22,19)-(20,24)-(12,24)
-///   - Screw threads (3 horizontal rects)
+//! Tray icon renderer — ports createLightbulbIcon from MainWindow.cpp.
+//!
+//! The C++ version uses QPainter on a 32x32 pixmap with antialiasing.
+//! We hand-compute the pixel buffer to reproduce the same shapes:
+//!   - Glow (radial gradient) when on
+//!   - Bulb (ellipse at 6,2 size 20x18)
+//!   - Base trapezoid (10,19)-(22,19)-(20,24)-(12,24)
+//!   - Screw threads (3 horizontal rects)
 
 pub const ICON_SIZE: u32 = 32;
 
@@ -105,7 +105,7 @@ pub fn render_lightbulb_icon(on: bool, dark_mode: bool) -> Vec<u8> {
         // For each y from 19 to 24, compute left and right x bounds
         for y in 19..=24 {
             let t = (y - 19) as f64 / 5.0; // 0 at top, 1 at bottom
-            // Left edge: from (10,19) to (12,24)
+                                           // Left edge: from (10,19) to (12,24)
             let left = 10.0 + t * 2.0;
             // Right edge: from (22,19) to (20,24)
             let right = 22.0 - t * 2.0;
@@ -123,9 +123,10 @@ pub fn render_lightbulb_icon(on: bool, dark_mode: bool) -> Vec<u8> {
     // drawRect(13, 26, 6, 2)  -> y:[26,28)
     // drawRect(14, 28, 4, 2)  -> y:[28,30)
     // These are drawn as outlined rects, but we'll fill them since they're small
-    draw_rect_outline(&mut rgba, 12, 24, 8, 2, base_dark_r, base_dark_g, base_dark_b);
-    draw_rect_outline(&mut rgba, 13, 26, 6, 2, base_dark_r, base_dark_g, base_dark_b);
-    draw_rect_outline(&mut rgba, 14, 28, 4, 2, base_dark_r, base_dark_g, base_dark_b);
+    let base_dark = (base_dark_r, base_dark_g, base_dark_b);
+    draw_rect_outline(&mut rgba, 12, 24, 8, 2, base_dark);
+    draw_rect_outline(&mut rgba, 13, 26, 6, 2, base_dark);
+    draw_rect_outline(&mut rgba, 14, 28, 4, 2, base_dark);
 
     rgba
 }
@@ -186,7 +187,8 @@ fn blend_pixel(rgba: &mut [u8], x: usize, y: usize, r: u8, g: u8, b: u8, a: u8) 
 }
 
 /// Draw a rectangle outline (1px border) — matches QPainter::drawRect with a pen.
-fn draw_rect_outline(rgba: &mut [u8], x: usize, y: usize, w: usize, h: usize, r: u8, g: u8, b: u8) {
+fn draw_rect_outline(rgba: &mut [u8], x: usize, y: usize, w: usize, h: usize, color: (u8, u8, u8)) {
+    let (r, g, b) = color;
     let size = ICON_SIZE as usize;
     // Top and bottom edges
     for i in x..(x + w).min(size) {
@@ -235,9 +237,9 @@ mod tests {
         let icon = render_lightbulb_icon(true, false);
         // The bulb center (~16, 11) should be yellow-ish (255, 220, 80)
         let idx = (11 * ICON_SIZE as usize + 16) * 4;
-        assert_eq!(icon[idx], 255);     // R
+        assert_eq!(icon[idx], 255); // R
         assert_eq!(icon[idx + 1], 220); // G
-        assert_eq!(icon[idx + 2], 80);  // B
+        assert_eq!(icon[idx + 2], 80); // B
     }
 
     #[test]
@@ -265,19 +267,23 @@ mod tests {
         let icon = render_lightbulb_icon(true, false);
         // Glow extends above the bulb — check a pixel at (16, 1) which is in the glow ellipse
         // but outside the bulb ellipse
-        let idx = (1 * ICON_SIZE as usize + 16) * 4;
+        let idx = (ICON_SIZE as usize + 16) * 4;
         let a = icon[idx + 3];
         // Should have some alpha from the glow
         assert!(a > 0, "glow pixel should have alpha > 0, got {}", a);
         // And it should be yellowish
-        assert!(icon[idx] > 200, "glow should be reddish-yellow, R={}", icon[idx]);
+        assert!(
+            icon[idx] > 200,
+            "glow should be reddish-yellow, R={}",
+            icon[idx]
+        );
     }
 
     #[test]
     fn test_off_icon_no_glow() {
         let icon = render_lightbulb_icon(false, false);
         // No glow when off — pixel at (16, 1) should be transparent
-        let idx = (1 * ICON_SIZE as usize + 16) * 4;
+        let idx = (ICON_SIZE as usize + 16) * 4;
         assert_eq!(icon[idx + 3], 0, "off icon should have no glow");
     }
 
@@ -285,10 +291,10 @@ mod tests {
     fn test_to_argb32_conversion() {
         // 2x2 image with known values
         let rgba = vec![
-            255, 0, 0, 255,    // pixel 0: red, opaque
-            0, 255, 0, 128,    // pixel 1: green, semi-transparent
-            0, 0, 255, 0,      // pixel 2: blue, transparent
-            255, 255, 0, 255,  // pixel 3: yellow, opaque
+            255, 0, 0, 255, // pixel 0: red, opaque
+            0, 255, 0, 128, // pixel 1: green, semi-transparent
+            0, 0, 255, 0, // pixel 2: blue, transparent
+            255, 255, 0, 255, // pixel 3: yellow, opaque
         ];
         let argb = to_argb32(&rgba, 2, 2);
         // Pixel 0: A=255, R=255, G=0, B=0

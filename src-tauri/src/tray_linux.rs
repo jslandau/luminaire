@@ -1,23 +1,14 @@
 use crate::icon::{render_lightbulb_icon, to_argb32, ICON_SIZE};
 use ksni::menu::StandardItem;
-use ksni::{Icon, MenuItem, ToolTip, Tray, TrayMethods};
+use ksni::{Icon, MenuItem, ToolTip, Tray, TrayService};
 use std::sync::{Arc, Mutex};
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 
 /// Shared state between the ksni tray and the Tauri runtime.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct TraySharedState {
     pub light_on: bool,
     pub connected: bool,
-}
-
-impl Default for TraySharedState {
-    fn default() -> Self {
-        Self {
-            light_on: false,
-            connected: false,
-        }
-    }
 }
 
 /// The ksni tray implementation for Linux.
@@ -196,24 +187,10 @@ pub fn setup_tray(app: &AppHandle) -> Result<(), String> {
         app_handle: app.clone(),
     };
 
-    let app_handle = app.clone();
-    let spawn_result = tauri::async_runtime::spawn(async move {
-        match tray.spawn().await {
-            Ok(handle) => {
-                // Store the handle globally
-                let _ = TRAY_HANDLE.set(handle);
-            }
-            Err(e) => {
-                eprintln!("Failed to spawn ksni tray: {}", e);
-                // Emit a warning to the frontend
-                let _ = app_handle.emit("tray-error", format!("Tray init failed: {}", e));
-            }
-        }
-    });
-
-    // Block briefly to let the spawn attempt register the handle
-    // (the actual D-Bus connection happens asynchronously)
-    let _ = spawn_result;
+    let service = TrayService::new(tray);
+    let handle = service.handle();
+    let _ = TRAY_HANDLE.set(handle);
+    service.spawn();
 
     Ok(())
 }
@@ -227,13 +204,10 @@ pub fn update_tray_icon(app: &AppHandle, light_on: bool) {
         s.light_on = light_on;
     }
 
-    // Trigger ksni to re-render
+    // Trigger ksni to re-render.
     if let Some(handle) = TRAY_HANDLE.get() {
-        let handle = handle.clone();
-        tauri::async_runtime::spawn(async move {
-            handle.update(|_tray| {
-                // The update closure just triggers a re-read of icon_pixmap and tool_tip
-            }).await;
+        handle.update(|_tray| {
+            // The update closure just triggers a re-read of icon_pixmap and tool_tip.
         });
     }
 }
@@ -246,11 +220,8 @@ pub fn update_menu_state(app: &AppHandle, connected: bool) {
         s.connected = connected;
     }
 
-    // Trigger ksni to re-read the menu
+    // Trigger ksni to re-read the menu.
     if let Some(handle) = TRAY_HANDLE.get() {
-        let handle = handle.clone();
-        tauri::async_runtime::spawn(async move {
-            handle.update(|_tray| {}).await;
-        });
+        handle.update(|_tray| {});
     }
 }

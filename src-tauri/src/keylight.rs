@@ -69,11 +69,7 @@ impl KeyLightClient {
             .timeout(std::time::Duration::from_secs(5))
             .build()
             .unwrap_or_else(|_| reqwest::Client::new());
-        Self {
-            ip,
-            port,
-            client,
-        }
+        Self { ip, port, client }
     }
 
     pub fn set_host(&mut self, ip: String, port: u16) {
@@ -106,7 +102,7 @@ impl KeyLightClient {
 
         let resp = self
             .client
-            .get(&self.lights_url())
+            .get(self.lights_url())
             .send()
             .await
             .map_err(|e| KeyLightError::Network(e.to_string()))?;
@@ -116,8 +112,8 @@ impl KeyLightClient {
             .await
             .map_err(|e| KeyLightError::Network(e.to_string()))?;
 
-        let parsed: ElgatoResponse = serde_json::from_str(&body)
-            .map_err(|e| KeyLightError::InvalidJson(e.to_string()))?;
+        let parsed: ElgatoResponse =
+            serde_json::from_str(&body).map_err(|e| KeyLightError::InvalidJson(e.to_string()))?;
 
         let light = parsed.lights.first().ok_or(KeyLightError::NoLights)?;
 
@@ -129,14 +125,17 @@ impl KeyLightClient {
     }
 
     /// Send a PUT request and parse the response to get the updated state.
-    async fn send_put_request(&self, json_body: serde_json::Value) -> Result<LightState, KeyLightError> {
+    async fn send_put_request(
+        &self,
+        json_body: serde_json::Value,
+    ) -> Result<LightState, KeyLightError> {
         if self.ip.is_empty() {
             return Err(KeyLightError::NoIp);
         }
 
         let resp = self
             .client
-            .put(&self.lights_url())
+            .put(self.lights_url())
             .header("Content-Type", "application/json")
             .json(&json_body)
             .send()
@@ -149,8 +148,8 @@ impl KeyLightClient {
             .map_err(|e| KeyLightError::Network(e.to_string()))?;
 
         // Parse the PUT response to update UI with actual values (mirrors C++ onPutFinished)
-        let parsed: ElgatoResponse = serde_json::from_str(&body)
-            .map_err(|e| KeyLightError::InvalidJson(e.to_string()))?;
+        let parsed: ElgatoResponse =
+            serde_json::from_str(&body).map_err(|e| KeyLightError::InvalidJson(e.to_string()))?;
 
         let light = parsed.lights.first().ok_or(KeyLightError::NoLights)?;
 
@@ -227,7 +226,8 @@ pub fn kelvin_to_api(kelvin: i32) -> i32 {
 /// API value is clamped to [143, 344] before conversion.
 pub fn api_to_kelvin(api_value: i32) -> i32 {
     let api_value = api_value.clamp(MIN_API_TEMP, MAX_API_TEMP);
-    MIN_KELVIN + (MAX_API_TEMP - api_value) * (MAX_KELVIN - MIN_KELVIN) / (MAX_API_TEMP - MIN_API_TEMP)
+    MIN_KELVIN
+        + (MAX_API_TEMP - api_value) * (MAX_KELVIN - MIN_KELVIN) / (MAX_API_TEMP - MIN_API_TEMP)
 }
 
 // --- Unit tests ---

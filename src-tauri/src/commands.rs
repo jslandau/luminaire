@@ -70,9 +70,7 @@ pub async fn connect(
     // Fetch the current state
     let kc_ref = {
         let c = client.lock().map_err(|e| e.to_string())?;
-        c.as_ref()
-            .ok_or("No client configured")?
-            .clone_state()
+        c.as_ref().ok_or("No client configured")?.clone_state()
     };
 
     match kc_ref.fetch_state().await {
@@ -81,26 +79,34 @@ pub async fn connect(
             {
                 let mut s = state.lock().map_err(|e| e.to_string())?;
                 s.mark_connected();
-                s.on_state_received(light_state.on, light_state.brightness, light_state.temperature_kelvin);
+                s.on_state_received(
+                    light_state.on,
+                    light_state.brightness,
+                    light_state.temperature_kelvin,
+                );
             }
 
             // Emit connection-succeeded immediately (before restore PUTs)
-            app
-                .emit("connection-succeeded", ConnectionSucceededPayload { ip: ip.clone() })
-                .ok();
+            app.emit(
+                "connection-succeeded",
+                ConnectionSucceededPayload { ip: ip.clone() },
+            )
+            .ok();
 
             // Update tray menu (enable power items, update show/hide label)
             crate::tray::update_tray_menu(&app, true);
             crate::tray::update_tray(&app, light_state.on);
 
             // Emit the initial state-received
-            app
-                .emit("state-received", StateReceivedPayload {
+            app.emit(
+                "state-received",
+                StateReceivedPayload {
                     on: light_state.on,
                     brightness: light_state.brightness,
                     temperature: light_state.temperature_kelvin,
-                })
-                .ok();
+                },
+            )
+            .ok();
 
             // Restore saved brightness/temperature if available (AC2.4)
             // Use a single set_state PUT when both values are present to avoid races.
@@ -120,7 +126,10 @@ pub async fn connect(
                 let kc_clone = kc_ref.clone_state();
                 let on_state = light_state.on;
                 tokio::spawn(async move {
-                    match kc_clone.set_state(on_state, saved_brightness, saved_temperature).await {
+                    match kc_clone
+                        .set_state(on_state, saved_brightness, saved_temperature)
+                        .await
+                    {
                         Ok(updated) => {
                             update_state_and_emit(&app_clone, &kc_clone, updated).await;
                         }
@@ -168,25 +177,29 @@ pub async fn connect(
 
             let msg = e.to_string();
             if should_disconnect {
-                app
-                    .emit("error", ErrorPayload {
+                app.emit(
+                    "error",
+                    ErrorPayload {
                         message: msg.clone(),
                         consecutive_errors: MAX_CONSECUTIVE_ERRORS,
                         disconnected: true,
-                    })
-                    .ok();
+                    },
+                )
+                .ok();
             } else {
                 let count = {
                     let s = state.lock().map_err(|e| e.to_string())?;
                     s.consecutive_errors
                 };
-                app
-                    .emit("error", ErrorPayload {
+                app.emit(
+                    "error",
+                    ErrorPayload {
                         message: msg.clone(),
                         consecutive_errors: count,
                         disconnected: false,
-                    })
-                    .ok();
+                    },
+                )
+                .ok();
             }
 
             Err(msg)
@@ -210,10 +223,14 @@ pub async fn disconnect(
         *c = None;
     }
 
-    app.emit("status-update", StatusUpdatePayload {
-        text: "Disconnected".to_string(),
-        color: "gray".to_string(),
-    }).ok();
+    app.emit(
+        "status-update",
+        StatusUpdatePayload {
+            text: "Disconnected".to_string(),
+            color: "gray".to_string(),
+        },
+    )
+    .ok();
 
     // Update tray menu (disable power items) and tray icon
     crate::tray::update_tray_menu(&app, false);
@@ -323,17 +340,15 @@ pub async fn set_temperature(
 
 /// Get the current app state snapshot.
 #[tauri::command]
-pub async fn get_state(state: State<'_, SharedAppState>) -> Result<crate::app_state::AppStateSnapshot, String> {
+pub async fn get_state(
+    state: State<'_, SharedAppState>,
+) -> Result<crate::app_state::AppStateSnapshot, String> {
     let s = state.lock().map_err(|e| e.to_string())?;
     Ok(s.snapshot())
 }
 
 /// Set power directly (used by tray menu items "Light On" / "Light Off").
-pub async fn set_power_direct(
-    app: &AppHandle,
-    client: &State<'_, SharedClient>,
-    on: bool,
-) {
+pub async fn set_power_direct(app: &AppHandle, client: &State<'_, SharedClient>, on: bool) {
     let connected = {
         let state = app.state::<SharedAppState>();
         let s = state.lock().unwrap();
@@ -367,11 +382,7 @@ pub async fn set_power_direct(
 
 /// Update AppState from a LightState and emit state-received.
 /// Also updates the tray icon. Guards against stale responses after disconnect (H2).
-async fn update_state_and_emit(
-    app: &AppHandle,
-    _kc: &KeyLightClient,
-    state_data: LightState,
-) {
+async fn update_state_and_emit(app: &AppHandle, _kc: &KeyLightClient, state_data: LightState) {
     let was_in_error;
     let connected;
     let ip;
@@ -386,7 +397,11 @@ async fn update_state_and_emit(
             was_in_error = s.consecutive_errors > 0;
             connected = s.connected;
             ip = s.ip.clone();
-            s.on_state_received(state_data.on, state_data.brightness, state_data.temperature_kelvin);
+            s.on_state_received(
+                state_data.on,
+                state_data.brightness,
+                state_data.temperature_kelvin,
+            );
         } else {
             return;
         }
@@ -394,18 +409,24 @@ async fn update_state_and_emit(
 
     // If we were in an error state, restore the "Connected" status (M1)
     if was_in_error && connected {
-        let _ = app.emit("status-update", StatusUpdatePayload {
-            text: format!("Connected to {}", ip),
-            color: "green".to_string(),
-        });
+        let _ = app.emit(
+            "status-update",
+            StatusUpdatePayload {
+                text: format!("Connected to {}", ip),
+                color: "green".to_string(),
+            },
+        );
     }
 
     // Emit state-received to frontend
-    let _ = app.emit("state-received", StateReceivedPayload {
-        on: state_data.on,
-        brightness: state_data.brightness,
-        temperature: state_data.temperature_kelvin,
-    });
+    let _ = app.emit(
+        "state-received",
+        StateReceivedPayload {
+            on: state_data.on,
+            brightness: state_data.brightness,
+            temperature: state_data.temperature_kelvin,
+        },
+    );
 
     // Update tray icon
     crate::tray::update_tray(app, state_data.on);
@@ -432,20 +453,26 @@ async fn handle_error(
 
     let msg = error.to_string();
     if should_disconnect {
-        app.emit("error", ErrorPayload {
-            message: msg,
-            consecutive_errors: count,
-            disconnected: true,
-        }).ok();
+        app.emit(
+            "error",
+            ErrorPayload {
+                message: msg,
+                consecutive_errors: count,
+                disconnected: true,
+            },
+        )
+        .ok();
         crate::tray::update_tray_menu(app, false);
         crate::tray::update_tray(app, false);
     } else {
-        app.emit("error", ErrorPayload {
-            message: msg,
-            consecutive_errors: count,
-            disconnected: false,
-        }).ok();
+        app.emit(
+            "error",
+            ErrorPayload {
+                message: msg,
+                consecutive_errors: count,
+                disconnected: false,
+            },
+        )
+        .ok();
     }
 }
-
-
