@@ -21,6 +21,8 @@ let draggingBrightness = false;
 let draggingTemperature = false;
 let editingBrightness = false;
 let editingTemperature = false;
+let pendingBrightness = null;
+let pendingTemperature = null;
 
 // --- Status helpers ---
 
@@ -99,9 +101,11 @@ async function onBrightnessSliderReleased() {
     draggingBrightness = false;
     if (connected) {
         const value = parseInt(brightnessSlider.value);
+        pendingBrightness = value;
         try {
             await invoke('set_brightness', { value });
         } catch (e) {
+            pendingBrightness = null;
             console.error('set_brightness error:', e);
         }
     }
@@ -127,7 +131,11 @@ function onBrightnessEditCommit() {
     editingBrightness = false;
 
     if (connected) {
-        invoke('set_brightness', { value }).catch(e => console.error('set_brightness error:', e));
+        pendingBrightness = value;
+        invoke('set_brightness', { value }).catch(e => {
+            pendingBrightness = null;
+            console.error('set_brightness error:', e);
+        });
     }
 }
 
@@ -141,9 +149,11 @@ async function onTemperatureSliderReleased() {
     draggingTemperature = false;
     if (connected) {
         const value = parseInt(temperatureSlider.value);
+        pendingTemperature = value;
         try {
             await invoke('set_temperature', { kelvin: value });
         } catch (e) {
+            pendingTemperature = null;
             console.error('set_temperature error:', e);
         }
     }
@@ -169,7 +179,11 @@ function onTemperatureEditCommit() {
     editingTemperature = false;
 
     if (connected) {
-        invoke('set_temperature', { kelvin: value }).catch(e => console.error('set_temperature error:', e));
+        pendingTemperature = value;
+        invoke('set_temperature', { kelvin: value }).catch(e => {
+            pendingTemperature = null;
+            console.error('set_temperature error:', e);
+        });
     }
 }
 
@@ -182,12 +196,19 @@ listen('state-received', (event) => {
     // Always update power button and tray
     updatePowerButton(on);
 
-    // Only update sliders if not dragging
-    if (!draggingBrightness && !editingBrightness) {
+    if (pendingBrightness === brightness) {
+        pendingBrightness = null;
+    }
+    if (pendingTemperature === temperature) {
+        pendingTemperature = null;
+    }
+
+    // Only update sliders if not dragging/editing and no local value is awaiting confirmation.
+    if (!draggingBrightness && !editingBrightness && pendingBrightness === null) {
         brightnessSlider.value = brightness;
         updateBrightnessDisplay(brightness);
     }
-    if (!draggingTemperature && !editingTemperature) {
+    if (!draggingTemperature && !editingTemperature && pendingTemperature === null) {
         temperatureSlider.value = temperature;
         updateTemperatureDisplay(temperature);
     }
