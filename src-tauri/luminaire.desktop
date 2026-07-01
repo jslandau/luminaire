@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Luminaire
+Comment=Control Elgato Key Light Neo
+Exec=luminaire
+Icon=luminaire
+Terminal=false
+Type=Application
+Categories=Utility;
+Keywords=elgato;light;key light;

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Luminaire</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Connection section -->
+        <div class="group">
+            <div class="group-title">Connection</div>
+            <div class="conn-row">
+                <label for="ipInput">IP:</label>
+                <input type="text" id="ipInput" placeholder="192.168.1.100" autocomplete="off">
+                <button id="connectBtn">Connect</button>
+            </div>
+        </div>
+
+        <!-- Status -->
+        <div id="statusLabel" class="status">Not connected</div>
+
+        <!-- Power section -->
+        <div class="group">
+            <div class="group-title">Power</div>
+            <button id="powerToggle" class="power-btn off">OFF</button>
+        </div>
+
+        <!-- Brightness section -->
+        <div class="group">
+            <div class="group-title">Brightness</div>
+            <div class="stacked-label" id="brightnessLabel">50%</div>
+            <input type="number" id="brightnessEdit" class="edit-hidden" min="0" max="100">
+            <input type="range" id="brightnessSlider" min="0" max="100" value="50">
+        </div>
+
+        <!-- Temperature section -->
+        <div class="group">
+            <div class="group-title">Temperature</div>
+            <div class="stacked-label" id="temperatureLabel">4950K</div>
+            <input type="number" id="temperatureEdit" class="edit-hidden" min="2900" max="7000">
+            <input type="range" id="temperatureSlider" min="2900" max="7000" value="4950">
+            <div class="temp-range">
+                <span>2900K</span>
+                <span>7000K</span>
+            </div>
+        </div>
+    </div>
+    <script src="main.js"></script>
+</body>
+</html>

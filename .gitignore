@@ -1,22 +1,14 @@
-# Build directories
+# Rust / Tauri build artifacts
+src-tauri/target/
+src-tauri/gen/
+
+# CMake build artifacts (legacy)
 build/
 built/
 
-# Qt generated files
-*_autogen/
-moc_*.cpp
-*.o
-*.so
-*.a
-
-# IDE files
-.vscode/
-.idea/
-*.user
-*.swp
-*.swo
-*~
-
-# OS files
+# macOS
 .DS_Store
-Thumbs.db
+
+# IDE
+.idea/
+.vscode/
